@@ -1,7 +1,24 @@
 BLACKJACK LAYOUT
 
 1. Find and learn to use the card library
-  A.
-  B.
+  A. Learn to deal cards
+  B. Learn how to use value
   C.
-2. Give 
+2. Create the ability to deal cards randomly to player and dealer.
+  A. Every player gets two 
+  B.Every Dealer gets 2 one face up.
+  C.
+3. Take the input of the card value and compare it to the dealers.
+  A. Is value > 21 = bust
+  B.if d_value < p_value = win
+  C.
+4.Create the Buttons 
+  A. Create a hit button
+  B. Create a Stand Button
+  C. Create a Doublle Button
+5. Create the Ability to Wager
+  A. Player Starts with 2000
+  B. Player can waiger as much as they wish within those boundaries
+  C. Make a goal of 25,000
+  
+  
