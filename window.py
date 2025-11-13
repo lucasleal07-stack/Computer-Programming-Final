@@ -1,7 +1,34 @@
 """Pygame window and main event loop for Blackjack.
 
 This module handles the display, user input, and window management.
-Game logic is delegated to game.py.
+Game logic is delegated to game.py (separation of concerns).
+
+Key Components:
+- DialogButton: Reusable clickable button with hover state
+- OutOfMoneyDialog: Modal dialog when balance <= 0
+- GameModeScreen: Mode selection screen (Practice/Classic/Custom)
+- BlackjackWindow: Main game window, event handler, and render loop
+
+Window States:
+- "mode_select": Showing game mode selection buttons
+- "game": Active gameplay
+
+Event Flow:
+1. User presses key/clicks mouse → handle_events()
+2. Events route to appropriate handler (dialog, mode screen, or game input)
+3. Game state updates in update()
+4. Screen redraws in render()
+5. Loop repeats at 60 FPS
+
+Potential Break Points:
+- game_state strings must match game.py (betting/playing/result/etc)
+- pygame initialization must happen before creating window
+- Event handling order matters (dialogs checked first)
+- ESC key returns to mode selection (clears all state)
+
+Dependencies:
+- pygame: For display and input
+- game.BlackjackGame: For game logic
 """
 
 import pygame
@@ -10,16 +37,31 @@ from game import BlackjackGame
 
 
 class DialogButton:
-    """Simple button for dialogs."""
+    """Simple button for dialogs and menus.
+    
+    Features:
+    - Clickable rectangular button
+    - Hover state detection (color changes on mouse over)
+    - Custom callback function execution on click
+    - Renders with different color when hovered
+    
+    Used by:
+    - GameModeScreen (3 mode selection buttons)
+    - OutOfMoneyDialog ("Get More Money" button)
+    
+    BREAK POINT: If callback is None, clicking will crash.
+    """
 
     def __init__(self, x: int, y: int, width: int, height: int, text: str, callback):
         """Initialize button.
 
         Args:
-            x, y: Position.
-            width, height: Size.
-            text: Button label.
-            callback: Function to call when clicked.
+            x, y: Top-left position in pixels
+            width, height: Button dimensions in pixels
+            text: Button label string
+            callback: Function to call when clicked (must be callable)
+        
+        BREAK POINT: callback must be a function, not None
         """
         self.rect = pygame.Rect(x, y, width, height)
         self.text = text
@@ -27,7 +69,14 @@ class DialogButton:
         self.hovered = False
 
     def handle_event(self, event):
-        """Handle mouse events."""
+        """Handle mouse motion and click events.
+        
+        Updates hover state on mouse motion.
+        Calls callback on mouse button down if button is hovered.
+        
+        Args:
+            event: Pygame event object
+        """
         if event.type == pygame.MOUSEMOTION:
             self.hovered = self.rect.collidepoint(event.pos)
         elif event.type == pygame.MOUSEBUTTONDOWN:
@@ -35,14 +84,34 @@ class DialogButton:
                 self.callback()
 
     def on_click(self):
-        """Trigger the button's callback."""
+        """Trigger the button's callback (programmatic click).
+        
+        Used when clicking is simulated (e.g., by GameModeScreen.handle_click).
+        """
         self.callback()
 
     def render(self, screen, font, color_button, color_hover, color_text):
-        """Render button."""
+        """Render button to screen.
+        
+        Args:
+            screen: Pygame surface to draw to
+            font: Font object for text rendering
+            color_button: RGB tuple for normal button color
+            color_hover: RGB tuple for hovered button color
+            color_text: RGB tuple for text color
+        
+        Renders:
+        1. Rectangle background (color changes on hover)
+        2. Border outline
+        3. Centered text
+        """
+        # Choose color based on hover state
         color = color_hover if self.hovered else color_button
+        # Draw filled rectangle for button background
         pygame.draw.rect(screen, color, self.rect)
+        # Draw border around button (2 pixel width)
         pygame.draw.rect(screen, color_text, self.rect, 2)
+        # Render text and center it on button
         text_surf = font.render(self.text, True, color_text)
         text_rect = text_surf.get_rect(center=self.rect.center)
         screen.blit(text_surf, text_rect)
@@ -321,9 +390,13 @@ class BlackjackWindow:
                         self.current_input += event.unicode
 
                 elif event.key == pygame.K_ESCAPE:
-                    # Cancel input or quit
+                    # Return to mode selection screen
+                    self.screen_state = "mode_select"
                     self.input_active = False
                     self.current_input = ""
+                    self.out_of_money_dialog = None
+                    self.game_mode_screen = GameModeScreen(self.screen)
+                    print("[ESC] Returning to mode selection...")
 
     def _process_bet_input(self):
         """Process the current bet input."""

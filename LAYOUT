@@ -38,24 +38,41 @@ COMPLETED TASKS:
   ✓ C. GameModeScreen UI (select mode at startup)
   ✓ D. Mode selection integrated into main game loop
 
+✓ 8. Code Organization & Refactoring
+  ✓ A. Separated cards.py (79 lines) - Card, Suit, Rank, Deck classes
+  ✓ B. Separated hand_logic.py (62 lines) - Hand calculation & comparison
+  ✓ C. Refactored game.py (203 lines) - Now focused on game state
+  ✓ D. Reduced from 336 lines to modular structure
+
 IN-PROGRESS / PARTIAL:
-⚠ 8. Custom Mode
+⚠ 9. Custom Mode
   - Logic framework ready but needs UI for goal input
 
-ARCHITECTURE:
-- game.py: Core blackjack logic (331 lines)
-  * Card, Suit, Rank enums
-  * Deck class with shuffle/deal
-  * BlackjackGame class with state machine
-  * Hand calculation with smart Ace handling
-  * Mode parameter support
+FILE STRUCTURE:
+- cards.py (79 lines):
+  * Suit enum (HEARTS, DIAMONDS, CLUBS, SPADES)
+  * Rank enum (2-ACE with values)
+  * Card class with get_value() method
+  * Deck class with shuffle/deal/remaining
 
-- window.py: Pygame GUI (446 lines)
-  * DialogButton class for interactive buttons
+- hand_logic.py (62 lines):
+  * calculate_hand_value() - Smart Ace handling (soft/hard)
+  * compare_hands() - Determine win/loss/bust/push
+
+- game.py (203 lines):
+  * BlackjackGame class - Main state machine
+  * Methods: place_bet, deal_initial_hands, player_hit, player_stand
+  * Natural blackjack detection
+  * Out-of-money recovery
+  * Balance tracking
+  
+- window.py (453 lines):
+  * DialogButton class for UI buttons
   * OutOfMoneyDialog for balance reset
   * GameModeScreen for mode selection
   * BlackjackWindow main game window
   * Event handling, rendering, game loop
+  * ESC key returns to mode select
 
 NEXT STEPS:
 1. Test full game flow (mode select -> play -> out of money dialog)
