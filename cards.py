@@ -59,9 +59,11 @@ class Card:
     def image_key(self) -> str:
         '''returns the image key so that it can pull the assigned png 
         examples AH, AS ect.'''
+        # File names use rank + suit short (e.g., 'AH', '10D', 'QS')
         rank = self.rank.display
-        self = self.suit.short
-        return f"{rank}{Suit}"
+        # Suit value is stored as a tuple (symbol, short) => ('♥','H')
+        suit_short = self.suit.value[1]
+        return f"{rank}{suit_short}"
 
 
 

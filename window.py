@@ -31,9 +31,12 @@ Dependencies:
 - game.BlackjackGame: For game logic
 """
 
+import os
+import cards
 import pygame
 import sys
 from game import BlackjackGame
+
 
 
 class DialogButton:
@@ -326,6 +329,27 @@ class BlackjackWindow:
         self.screen_state = "mode_select"
         self.game_mode_screen = GameModeScreen(self.screen)
 
+        # Card images: load PNGs for card faces and a back image
+        self.card_size = (72, 96)
+        self.card_images = {}
+        self.card_back_image = None
+        try:
+            assets_path = os.path.join(os.path.dirname(__file__), 'pygame_cards-0.1', 'cards', 'PNG')
+            for fname in os.listdir(assets_path):
+                if not fname.lower().endswith('.png'):
+                    continue
+                key = fname[:-4]  # strip .png
+                img = pygame.image.load(os.path.join(assets_path, fname)).convert_alpha()
+                img = pygame.transform.scale(img, self.card_size)
+                # Store backs as a special key
+                if 'back' in fname.lower():
+                    self.card_back_image = img
+                else:
+                    self.card_images[key] = img
+        except Exception as e:
+            # If loading images fails, keep dict empty and fall back to text rendering
+            print(f"Failed to load card images: {e}")
+
     def handle_events(self):
         """Handle pygame events (quit, keyboard input, etc.)."""
         for event in pygame.event.get():
@@ -466,7 +490,7 @@ class BlackjackWindow:
         self.screen.blit(balance_text, (20, 20))
         self.screen.blit(bet_text, (20, 60))
 
-        # Display hands
+        # Display hands as images and text
         player_hand_text = self.font_small.render(self.game.get_player_hand_str(), True, self.color_text)
         if self.game.game_state == "playing":
             dealer_hand_text = self.font_small.render(
@@ -478,6 +502,50 @@ class BlackjackWindow:
             )
         self.screen.blit(player_hand_text, (20, self.height - 100))
         self.screen.blit(dealer_hand_text, (20, 100))
+
+        # Draw card images for dealer and player
+        card_w, card_h = self.card_size
+        # Dealer: top center
+        dealer_cards = self.game.dealer_hand
+        if dealer_cards:
+            start_x = (self.width - (len(dealer_cards) * (card_w + 10))) // 2
+            y = 100
+            for idx, card in enumerate(dealer_cards):
+                x = start_x + idx * (card_w + 10)
+                # hide hole card while playing
+                if self.game.game_state == 'playing' and idx == 1:
+                    if self.card_back_image:
+                        self.screen.blit(self.card_back_image, (x, y))
+                    else:
+                        pygame.draw.rect(self.screen, (200, 200, 200), (x, y, card_w, card_h))
+                else:
+                    key = getattr(card, 'image_key', None) and card.image_key()
+                    surf = None
+                    if key is not None:
+                        surf = self.card_images.get(key)
+                    if surf:
+                        self.screen.blit(surf, (x, y))
+                    else:
+                        # fallback: render card text
+                        t = self.font_small.render(str(card), True, self.color_text)
+                        self.screen.blit(t, (x + 5, y + card_h//2 - 8))
+
+        # Player: bottom center
+        player_cards = self.game.player_hand
+        if player_cards:
+            start_x = (self.width - (len(player_cards) * (card_w + 10))) // 2
+            y = self.height - card_h - 40
+            for idx, card in enumerate(player_cards):
+                x = start_x + idx * (card_w + 10)
+                key = getattr(card, 'image_key', None) and card.image_key()
+                surf = None
+                if key is not None:
+                    surf = self.card_images.get(key)
+                if surf:
+                    self.screen.blit(surf, (x, y))
+                else:
+                    t = self.font_small.render(str(card), True, self.color_text)
+                    self.screen.blit(t, (x + 5, y + card_h//2 - 8))
 
         # Display game state message
         if self.game.result_message:
