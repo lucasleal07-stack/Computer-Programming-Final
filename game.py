@@ -49,11 +49,7 @@ class BlackjackGame:
         Returns:
             Tuple of (success: bool, message: str)
         """
-        # In practice mode, no bet needed - just deal cards
-        if self.mode == "practice":
-            self.current_bet = 0
-            self.game_state = "dealing"
-            return True, "Practice mode: Dealing cards..."
+        # Validate bet amount (classic mode)
 
         # Check if player has balance to bet (CRITICAL: prevents overbetting)
         if self.balance <= 0:

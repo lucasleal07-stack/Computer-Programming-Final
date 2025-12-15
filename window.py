@@ -221,23 +221,14 @@ class GameModeScreen:
         button_height = 60
         center_x = screen.get_width() // 2
 
-        y_offset = 150
-        self.btn_practice = DialogButton(
-            center_x - button_width // 2, y_offset, button_width, button_height,
-            "Practice Mode (No Wagers)", lambda: self._select("practice")
-        )
-        y_offset += 120
+        y_offset = 180
+        # Only provide Classic mode
         self.btn_classic = DialogButton(
             center_x - button_width // 2, y_offset, button_width, button_height,
             "Classic Mode ($2000 -> $25000)", lambda: self._select("classic")
         )
-        y_offset += 120
-        self.btn_custom = DialogButton(
-            center_x - button_width // 2, y_offset, button_width, button_height,
-            "Custom Mode (Set Goals)", lambda: self._select("custom")
-        )
 
-        self.buttons = [self.btn_practice, self.btn_classic, self.btn_custom]
+        self.buttons = [self.btn_classic]
 
     def _select(self, mode: str):
         """Set selected mode."""
@@ -333,6 +324,10 @@ class BlackjackWindow:
         self.card_size = (72, 96)
         self.card_images = {}
         self.card_back_image = None
+        # Layout controls for cards
+        self.card_spacing = 14
+        self.card_left_margin = 140  # leave space for left-side text
+        self.card_right_margin = 20
         try:
             assets_path = os.path.join(os.path.dirname(__file__), 'pygame_cards-0.1', 'cards', 'PNG')
             for fname in os.listdir(assets_path):
@@ -349,6 +344,8 @@ class BlackjackWindow:
         except Exception as e:
             # If loading images fails, keep dict empty and fall back to text rendering
             print(f"Failed to load card images: {e}")
+        # Track missing keys to avoid spamming logs
+        self._missing_keys_reported = set()
 
     def handle_events(self):
         """Handle pygame events (quit, keyboard input, etc.)."""
@@ -359,15 +356,12 @@ class BlackjackWindow:
             # If on mode selection screen
             if self.screen_state == "mode_select":
                 if event.type == pygame.MOUSEBUTTONDOWN:
-                    selected_mode = self.game_mode_screen.handle_click(event.pos)
-                    if selected_mode:
-                        # Initialize game with selected mode
-                        starting_balance = 2000 if selected_mode == "classic" else 0 if selected_mode == "practice" else 0
-                        target_balance = 25000 if selected_mode == "classic" else 0 if selected_mode == "practice" else 0
-                        
-                        self.game = BlackjackGame(starting_balance=starting_balance, 
-                                               target_balance=target_balance, 
-                                               mode=selected_mode)
+                        selected_mode = self.game_mode_screen.handle_click(event.pos)
+                        if selected_mode:
+                            # Only classic mode is supported now
+                            self.game = BlackjackGame(starting_balance=2000,
+                                                       target_balance=25000,
+                                                       mode="classic")
                         self.screen_state = "game"
                         self.current_input = ""
                         self.input_active = False
@@ -424,15 +418,7 @@ class BlackjackWindow:
 
     def _process_bet_input(self):
         """Process the current bet input."""
-        # In practice mode, skip betting
-        if self.game.mode == "practice":
-            success, msg = self.game.place_bet()
-            print(f"[PRACTICE] {msg}")
-            if success:
-                self.game.deal_initial_hands()
-                self.input_active = False
-                self.current_input = ""
-            return
+        # Normal betting flow (classic mode only)
 
         if not self.current_input:
             print("[BET] No amount entered.")
@@ -508,10 +494,16 @@ class BlackjackWindow:
         # Dealer: top center
         dealer_cards = self.game.dealer_hand
         if dealer_cards:
-            start_x = (self.width - (len(dealer_cards) * (card_w + 10))) // 2
+            total_width = len(dealer_cards) * card_w + max(0, (len(dealer_cards) - 1)) * self.card_spacing
+            start_x = (self.width - total_width) // 2
+            # enforce left/right margins so cards don't overlap HUD text
+            if start_x < self.card_left_margin:
+                start_x = self.card_left_margin
+            if start_x + total_width > self.width - self.card_right_margin:
+                start_x = self.width - self.card_right_margin - total_width
             y = 100
             for idx, card in enumerate(dealer_cards):
-                x = start_x + idx * (card_w + 10)
+                x = start_x + idx * (card_w + self.card_spacing)
                 # hide hole card while playing
                 if self.game.game_state == 'playing' and idx == 1:
                     if self.card_back_image:
@@ -526,6 +518,10 @@ class BlackjackWindow:
                     if surf:
                         self.screen.blit(surf, (x, y))
                     else:
+                        # Debug: report missing image once
+                        if key is not None and key not in self._missing_keys_reported:
+                            print(f"Missing card image for {key}")
+                            self._missing_keys_reported.add(key)
                         # fallback: render card text
                         t = self.font_small.render(str(card), True, self.color_text)
                         self.screen.blit(t, (x + 5, y + card_h//2 - 8))
@@ -533,10 +529,15 @@ class BlackjackWindow:
         # Player: bottom center
         player_cards = self.game.player_hand
         if player_cards:
-            start_x = (self.width - (len(player_cards) * (card_w + 10))) // 2
+            total_width = len(player_cards) * card_w + max(0, (len(player_cards) - 1)) * self.card_spacing
+            start_x = (self.width - total_width) // 2
+            if start_x < self.card_left_margin:
+                start_x = self.card_left_margin
+            if start_x + total_width > self.width - self.card_right_margin:
+                start_x = self.width - self.card_right_margin - total_width
             y = self.height - card_h - 40
             for idx, card in enumerate(player_cards):
-                x = start_x + idx * (card_w + 10)
+                x = start_x + idx * (card_w + self.card_spacing)
                 key = getattr(card, 'image_key', None) and card.image_key()
                 surf = None
                 if key is not None:
